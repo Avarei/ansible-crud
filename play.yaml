@@ -1,0 +1,19 @@
+- name: Test Play
+  hosts: localhost
+  tasks:
+    - name: Debug
+      ansible.builtin.debug:
+        msg: "Hello World"
+
+    - name: Test action plugin
+      crud:
+        state: read
+        read:
+          - name: Mein Name
+            ansible.builtin.file:
+              state: touch
+              path: ./test.txt
+      register: result
+    - name: Show values
+      ansible.builtin.debug:
+        var: result
