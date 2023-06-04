@@ -4,8 +4,6 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 from ansible.plugins.action import ActionBase
-from ansible.playbook.helpers import load_list_of_tasks
-from ansible.playbook.task import Task
 
 class ActionModule(ActionBase):
     ''' TODO write Documentation '''
@@ -20,10 +18,10 @@ class ActionModule(ActionBase):
 
         validation_result, new_module_args = self.validate_argument_spec(
             argument_spec=dict(
-                create=dict(type='list', required=False),
-                read=dict(type='list', required=True),
-                update=dict(type='list', required=False),
-                delete=dict(type='list', required=False),
+                create=dict(type='dict', required=False),
+                read=dict(type='dict', required=True),
+                update=dict(type='dict', required=False),
+                delete=dict(type='dict', required=False),
                 state=dict(
                     type='str',
                     choices=['present', 'absent', 'read', 'created'],
@@ -40,10 +38,10 @@ class ActionModule(ActionBase):
 
         
 
-        createActions = new_module_args['create']
-        readActions = new_module_args['read']
-        updateActions = new_module_args['update']
-        deleteActions = new_module_args['delete']
+        createAction = new_module_args['create']
+        readAction = new_module_args['read']
+        updateAction = new_module_args['update']
+        deleteAction = new_module_args['delete']
         state = new_module_args['state']
 
         result = dict(
@@ -53,25 +51,48 @@ class ActionModule(ActionBase):
             update=dict(),
             delete=dict()
         )
-        task = readActions[0]
-        # load_list_of_tasks(ds=createActions, loader=self._loader, play=self._task.get_variable_manager()._play)
-        task_result = self._execute_module(task, task_vars=task_vars)
-        # task_result = self._execute_module(module_name=task.action, module_args=task.args, task_vars=task_vars)
+        task = readAction
+        # todo check if task has action and args
 
+        # result['read'] = self._execute_module(module_name=task['action'], module_args=task['args'], task_vars=task_vars)
+        readResult = execute_module(self, readAction, task_vars)
+        result['read'] = readResult
+        
+        if state in ['present', 'created']:
+            if ('failed' in readResult and readResult['failed']) or readResult['rc'] != 0:
+                result['create'] = execute_module(self, createAction, task_vars)
+                if 'changed' in result['create']:
+                    result['changed'] = result['create']['changed']
+                if 'failed' in result['create']:
+                    result['failed'] = result['create']['failed']
+            elif state == 'present':
+                # Resource Exists and state is present
+                updateResult = execute_module(self, updateAction, task_vars)
+                result['update'] = updateResult
+                if ('failed' in updateResult and updateResult['failed']) or updateResult['rc'] != 0:
+                    raise Exception('Update failed')
+                
+                if 'changed' in updateResult:
+                    result['changed'] = updateResult['changed']
+                if 'failed' in updateResult:
+                    result['failed'] = updateResult['failed']
+        elif state == 'absent':
+            if not readResult['failed'] and readResult['rc'] != 0:
+                result['delete'] = execute_module(self, deleteAction, task_vars)
+                if 'changed' in result['delete']:
+                    result['changed'] = result['delete']['changed']
+                if 'failed' in result['delete']:
+                    result['failed'] = result['delete']['failed']
+            # else:
+            #   No resource to delete
 
-        # result['read'] = task_result
-        # result['read']['debug'] = task.action
-
-        # module_args = self._task.args.copy()
-        # return self._execute_module(module_name='ansible.builtin.file',
-        #                                      module_args=dict(path='./hello.txt', state='touch'),
-        #                                      task_vars=task_vars)
-
-
-
-
-        # for action in readActions:
-        #     # load task from action
-
+                    
 
         return result
+
+def execute_module(self, task, task_vars):
+    if not 'action' in task or not 'args' in task:
+        raise Exception('Action or args missing in task')
+
+    result = self._execute_module(module_name=task['action'], module_args=task['args'], task_vars=task_vars)
+    return result

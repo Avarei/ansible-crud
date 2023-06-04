@@ -7,12 +7,23 @@
 
     - name: Test action plugin
       crud:
-        state: read
+        state: present
+        create:
+          action: ansible.builtin.command
+          args:
+            _raw_params: touch test.txt
         read:
-          - name: Mein Name
-            ansible.builtin.file:
-              state: touch
-              path: ./test.txt
+          action: ansible.builtin.command
+          args:
+            _raw_params: cat test.txt
+        update:
+          action: ansible.builtin.command
+          args:
+            _raw_params: touch test.txt
+        delete:
+          action: ansible.builtin.command
+          args:
+            _raw_params: rm test.txt
       register: result
     - name: Show values
       ansible.builtin.debug:
