@@ -1,0 +1,4 @@
+collections:
+  - name: https://github.com/Avarei/ansible-crud.git
+    type: git
+    version: main
