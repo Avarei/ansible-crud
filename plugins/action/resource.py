@@ -48,20 +48,24 @@ class ActionModule(ActionBase):
 
         result = dict(
             changed=False,
-            create=dict(),
-            read=dict(),
-            update=dict(),
-            delete=dict()
+            create=[],
+            read=[],
+            update=[],
+            delete=[]
         )
         task = readActions
         # todo check if task has action and args
 
         # result['read'] = self._execute_module(module_name=task['action'], module_args=task['args'], task_vars=task_vars)
-        
+
         readResult = execute_module(self, readActions, task_vars)
         result['read'] = readResult
-        
+
+        # TODO determine if there was a exception
+        # TODO determine if there was a resource exists
+
         if state in ['present', 'created']:
+
             if ('failed' in readResult and readResult['failed']) or readResult['rc'] != 0:
                 result['create'] = execute_module(self, createActions, task_vars)
                 if 'changed' in result['create']:
@@ -74,7 +78,7 @@ class ActionModule(ActionBase):
                 result['update'] = updateResult
                 if ('failed' in updateResult and updateResult['failed']) or updateResult['rc'] != 0:
                     raise Exception('Update failed')
-                
+
                 if 'changed' in updateResult:
                     result['changed'] = updateResult['changed']
                 if 'failed' in updateResult:
@@ -89,7 +93,7 @@ class ActionModule(ActionBase):
             # else:
             #   No resource to delete
 
-                    
+
 
         return result
 
