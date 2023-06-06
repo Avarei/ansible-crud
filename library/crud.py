@@ -15,13 +15,17 @@ class ActionModule(ActionBase):
 
         result = super(ActionModule, self).run(tmp, task_vars)
         del tmp  # deprecated
+        operation_args = dict(
+            action = dict(type='str', required=True),
+            args = dict(type='dict', required=False),
+        )
 
         validation_result, new_module_args = self.validate_argument_spec(
             argument_spec=dict(
-                create=dict(type='dict', required=False),
-                read=dict(type='dict', required=True),
-                update=dict(type='dict', required=False),
-                delete=dict(type='dict', required=False),
+                create=dict(type='list', required=False, options=operation_args),
+                read=dict(type='list', required=True, options=operation_args),
+                update=dict(type='list', required=False, options=operation_args),
+                delete=dict(type='list', required=False, options=operation_args),
                 state=dict(
                     type='str',
                     choices=['present', 'absent', 'read', 'created'],
@@ -36,12 +40,10 @@ class ActionModule(ActionBase):
             ]
         )
 
-        
-
-        createAction = new_module_args['create']
-        readAction = new_module_args['read']
-        updateAction = new_module_args['update']
-        deleteAction = new_module_args['delete']
+        createActions = new_module_args['create']
+        readActions = new_module_args['read']
+        updateActions = new_module_args['update']
+        deleteActions = new_module_args['delete']
         state = new_module_args['state']
 
         result = dict(
@@ -51,23 +53,24 @@ class ActionModule(ActionBase):
             update=dict(),
             delete=dict()
         )
-        task = readAction
+        task = readActions
         # todo check if task has action and args
 
         # result['read'] = self._execute_module(module_name=task['action'], module_args=task['args'], task_vars=task_vars)
-        readResult = execute_module(self, readAction, task_vars)
+        
+        readResult = execute_module(self, readActions, task_vars)
         result['read'] = readResult
         
         if state in ['present', 'created']:
             if ('failed' in readResult and readResult['failed']) or readResult['rc'] != 0:
-                result['create'] = execute_module(self, createAction, task_vars)
+                result['create'] = execute_module(self, createActions, task_vars)
                 if 'changed' in result['create']:
                     result['changed'] = result['create']['changed']
                 if 'failed' in result['create']:
                     result['failed'] = result['create']['failed']
             elif state == 'present':
                 # Resource Exists and state is present
-                updateResult = execute_module(self, updateAction, task_vars)
+                updateResult = execute_module(self, updateActions, task_vars)
                 result['update'] = updateResult
                 if ('failed' in updateResult and updateResult['failed']) or updateResult['rc'] != 0:
                     raise Exception('Update failed')
@@ -78,7 +81,7 @@ class ActionModule(ActionBase):
                     result['failed'] = updateResult['failed']
         elif state == 'absent':
             if not readResult['failed'] and readResult['rc'] != 0:
-                result['delete'] = execute_module(self, deleteAction, task_vars)
+                result['delete'] = execute_module(self, deleteActions, task_vars)
                 if 'changed' in result['delete']:
                     result['changed'] = result['delete']['changed']
                 if 'failed' in result['delete']:
@@ -90,9 +93,12 @@ class ActionModule(ActionBase):
 
         return result
 
-def execute_module(self, task, task_vars):
-    if not 'action' in task or not 'args' in task:
-        raise Exception('Action or args missing in task')
+def execute_module(self, tasks, task_vars):
+    results = []
+    for task in tasks:
+        if not 'action' in task or not 'args' in task:
+            raise Exception('Action or args missing in task')
 
-    result = self._execute_module(module_name=task['action'], module_args=task['args'], task_vars=task_vars)
-    return result
+        results.append(self._execute_module(module_name=task['action'], module_args=task['args'], task_vars=task_vars))
+
+    return results

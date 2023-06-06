@@ -9,22 +9,70 @@
       crud:
         state: present
         create:
-          action: ansible.builtin.command
-          args:
-            _raw_params: touch test.txt
+          - action: ansible.builtin.command
+            args:
+              _raw_params: touch test.txt
         read:
-          action: ansible.builtin.command
-          args:
-            _raw_params: cat test.txt
+          - action: ansible.builtin.command
+            args:
+              _raw_params: cat test.txt
+              # TODO add failed when condition.
         update:
-          action: ansible.builtin.command
-          args:
-            _raw_params: touch test.txt
+          - action: ansible.builtin.command
+            args:
+              _raw_params: touch test.txt
         delete:
-          action: ansible.builtin.command
-          args:
-            _raw_params: rm test.txt
+          - action: ansible.builtin.command
+            args:
+              _raw_params: rm test.txt
       register: result
     - name: Show values
       ansible.builtin.debug:
         var: result
+
+    # # - name: Bind Record
+    # - name: Example with Rest API
+    #   crud:
+    #     state: present
+    #     create:
+    #       action: uri
+    #       args:
+    #         url: http://localhost:8080/v2/zone/{{ zone_id }}/recordsets
+    #         method: POST
+    #         headers:
+    #           x-auth-token: "{{ token }}"
+    #         body_format: json
+    #         body:
+    #           name: example.com.
+    #           description: "This is an example record set."
+    #           type: A
+    #           ttl: 3600
+    #           records:
+    #             - 127.0.0.1
+    #     read:
+    #       action: uri
+    #       args:
+    #         url: http://localhost:8080/v2/zone/{{ zone_id }}/recordsets
+    #         method: GET
+    #     update:
+    #       action: uri
+    #       args:
+    #         url: http://localhost:8080/api/v1/namespaces/default/pods/nginx
+    #         method: PUT
+    #         body_format: json
+    #         body:
+    #           apiVersion: v1
+    #           kind: Pod
+    #           metadata:
+    #             name: nginx
+    #           spec:
+    #             containers:
+    #               - name: nginx
+    #                 image: nginx
+    #                 ports:
+    #                   - containerPort: 80
+    #     delete:
+    #       action: uri
+    #       args:
+    #         url: http://localhost:8080/api/v1/namespaces/default/pods/nginx
+    #         method: DELETE
